@@ -1,0 +1,19 @@
+{
+  "name": "jester-game-bot",
+  "version": "2.0.0",
+  "description": "Jester Game Bot - Discord oyun botu (ekonomi, RPG, pet, evlilik, oyunlar)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --no-warnings index.js",
+    "deploy-commands": "node --no-warnings deploy-commands.js",
+    "test": "node test/run-tests.js",
+    "start:render": "node --no-warnings deploy-commands.js; node --no-warnings index.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.1",
+    "discord.js": "^14.15.3"
+  }
+}
