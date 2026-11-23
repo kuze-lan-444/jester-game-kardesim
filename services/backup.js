@@ -19,7 +19,11 @@ function runBackup(label = 'otomatik') {
 }
 
 const routes = {
-  'POST /backup/run': ({ body }) => runBackup(body.label || 'elle'),
+  'POST /backup/run': ({ body }) => {
+    const r = runBackup(body.label || 'elle');
+    require('../lib/github-backup').push('elle').catch(() => {}); // GitHub yedeği arka planda
+    return r;
+  },
   'GET /backup/list': ({ query }) => {
     fs.mkdirSync(DIR, { recursive: true });
     const files = fs.readdirSync(DIR).filter(safeName).sort().reverse().slice(0, Math.min(parseInt(query.limit, 10) || 15, 25));
