@@ -22,5 +22,15 @@ module.exports = {
     const doBackup = () => { try { runBackup('otomatik'); } catch (e) { console.error('Yedek alınamadı:', e.message); } };
     setTimeout(doBackup, 60 * 1000).unref?.();
     setInterval(doBackup, 6 * 60 * 60 * 1000).unref?.();
+
+    // GitHub yedeği (GITHUB_BACKUP_TOKEN ve GITHUB_BACKUP_REPO tanımlıysa): açılıştan 2 dk sonra, sonra her 15 dakikada bir (sadece veri değiştiyse)
+    const gh = require('../lib/github-backup');
+    if (gh.enabled()) {
+      setTimeout(() => gh.push('açılış'), 2 * 60 * 1000).unref?.();
+      setInterval(() => gh.push('otomatik'), 15 * 60 * 1000).unref?.();
+      console.log('☁️ GitHub yedekleme açık.');
+    } else {
+      console.log('ℹ️ GitHub yedekleme kapalı (GITHUB_BACKUP_TOKEN / GITHUB_BACKUP_REPO tanımlı değil). Render ücretsiz planda veri kalıcı değildir!');
+    }
   },
 };
