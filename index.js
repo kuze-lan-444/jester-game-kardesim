@@ -38,10 +38,15 @@ client.login(DISCORD_TOKEN).catch((err) => {
 });
 
 // Render her yeni sürümde botu SIGTERM ile kapatır: veritabanını düzgünce kapatıp çık
-function shutdown(signal) {
+async function shutdown(signal) {
   console.log(`${signal} alındı, kapanıyor...`);
   try { client.destroy(); } catch { /* zaten kapalı */ }
   try { require('./lib/db').db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch { /* sorun değil */ }
+  // Kapanmadan son bir GitHub yedeği (en fazla 20 sn beklenir)
+  try {
+    const gh = require('./lib/github-backup');
+    if (gh.enabled()) await Promise.race([gh.push('kapanış'), new Promise((r) => setTimeout(r, 20000))]);
+  } catch { /* sorun değil */ }
   process.exit(0);
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
