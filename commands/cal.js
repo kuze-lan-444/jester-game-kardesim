@@ -37,10 +37,16 @@ module.exports = {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(cancelId).setLabel('İptal Et (30s)').setStyle(ButtonStyle.Danger).setEmoji('⛔'),
     );
+    // allowedMentions: botun genel ayarı ne olursa olsun hedefe KESİN ping gitsin
     const msg = await interaction.reply({
       content: `${victim}, **${thief.username}** senden coin çalmaya çalışıyor! 30 saniye içinde butona basmazsan para gider 😈`,
+      allowedMentions: { users: [victim.id] },
       components: [row], fetchReply: true,
     });
+
+    // Hedefe DM (kapalıysa sessizce geç) — sunucuda mesajı kaçırsa bile haberi olsun
+    victim.send(`🚨 **${interaction.guild?.name ?? 'Sunucu'}** sunucusunda **${thief.username}** senden coin çalmaya çalışıyor! 30 saniyen var, sunucuya gidip **İptal Et** butonuna bas: ${msg.url}`)
+      .catch(() => {});
 
     const collector = msg.createMessageComponentCollector({
       componentType: ComponentType.Button, time: STEAL_WINDOW_MS,
@@ -59,6 +65,12 @@ module.exports = {
         const result = await economy.post('/theft/attempt', { guildId: interaction.guildId, thiefId: thief.id, victimId: victim.id });
         const levelMsg = result.leveled ? `\n📈 **Çalma gücün arttı!** Artık her seferinde **${result.nextAmount} coin** çalacaksın.` : '';
         await msg.edit({ content: `💰 **${thief.username}**, **${victim.username}**'den **${result.stolen} coin** çaldı!\n🥷 Toplam çalma: **${result.uses}**${levelMsg}`, components: [] });
+        // msg.edit ping atmaz; sonucu ayrı mesajla hedefe bildir
+        await interaction.followUp({
+          content: `🚨 ${victim}, **${thief.username}** senden **${result.stolen} coin** çaldı!`,
+          allowedMentions: { users: [victim.id] },
+        }).catch(() => {});
+        victim.send(`💸 **${thief.username}** senden **${result.stolen} coin** çaldı.`).catch(() => {});
       } catch (err) {
         await msg.edit({ content: `⚠️ Hırsızlık başarısız: ${friendlyError(err)}`, components: [] });
       }
