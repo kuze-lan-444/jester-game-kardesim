@@ -69,11 +69,6 @@ module.exports = {
           embeds: [box(`💰 **${thief.username}**, **${victim.username}**'den **${result.stolen} coin** çaldı!\n🥷 Toplam çalma: **${result.uses}**${levelMsg}`)],
           components: [],
         });
-        // Düzenleme ping atmaz; kanala düz (embed'siz) bir mesajla hedefi etiketle
-        await interaction.channel.send({
-          content: `${victim} 🚨 **${thief.username}** senden **${result.stolen} coin** çaldı!`,
-          allowedMentions: { users: [victim.id] },
-        }).catch(() => {});
       } catch (err) {
         await msg.edit({ content: '', embeds: [box(`⚠️ Hırsızlık başarısız: ${friendlyError(err)}`, 0x95A5A6)], components: [] });
       }
