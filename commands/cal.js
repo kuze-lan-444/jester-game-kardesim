@@ -1,12 +1,14 @@
 // commands/games/cal.js — /çal (hırsızlık). Discord slash komut adları
 // Unicode karakter destekler; dosya adı ASCII (cal.js) ama komut adı 'çal'.
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 const { economy } = require('../lib/service-clients');
 const { safeExecute, friendlyError } = require('../lib/safe-execute');
 
 // Aynı anda yalnızca 1 aktif hırsızlık girişimi (process-local).
 const activeSteals = new Set();
 const STEAL_WINDOW_MS = 30_000;
+
+const box = (text, color = 0xE74C3C) => new EmbedBuilder().setColor(color).setDescription(text);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,16 +39,14 @@ module.exports = {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(cancelId).setLabel('İptal Et (30s)').setStyle(ButtonStyle.Danger).setEmoji('⛔'),
     );
-    // allowedMentions: botun genel ayarı ne olursa olsun hedefe KESİN ping gitsin
+
+    // Etiket embed'in ÜSTÜNDE (content), bildirim kanaldan gider. DM yok.
     const msg = await interaction.reply({
-      content: `${victim}, **${thief.username}** senden coin çalmaya çalışıyor! 30 saniye içinde butona basmazsan para gider 😈`,
+      content: `${victim}`,
+      embeds: [box(`**${thief.username}** senden coin çalmaya çalışıyor! 30 saniye içinde butona basmazsan para gider 😈`)],
       allowedMentions: { users: [victim.id] },
       components: [row], fetchReply: true,
     });
-
-    // Hedefe DM (kapalıysa sessizce geç) — sunucuda mesajı kaçırsa bile haberi olsun
-    victim.send(`🚨 **${interaction.guild?.name ?? 'Sunucu'}** sunucusunda **${thief.username}** senden coin çalmaya çalışıyor! 30 saniyen var, sunucuya gidip **İptal Et** butonuna bas: ${msg.url}`)
-      .catch(() => {});
 
     const collector = msg.createMessageComponentCollector({
       componentType: ComponentType.Button, time: STEAL_WINDOW_MS,
@@ -56,7 +56,7 @@ module.exports = {
     collector.on('collect', async (i) => {
       prevented = true;
       activeSteals.delete(key);
-      await i.update({ content: `🛡️ ${victim.username} çalmayı **iptal etti**!`, components: [] });
+      await i.update({ content: `${victim}`, embeds: [box(`🛡️ **${victim.username}** çalmayı **iptal etti**!`, 0x2ECC71)], components: [] });
     });
     collector.on('end', async () => {
       if (prevented) return;
@@ -64,15 +64,19 @@ module.exports = {
       try {
         const result = await economy.post('/theft/attempt', { guildId: interaction.guildId, thiefId: thief.id, victimId: victim.id });
         const levelMsg = result.leveled ? `\n📈 **Çalma gücün arttı!** Artık her seferinde **${result.nextAmount} coin** çalacaksın.` : '';
-        await msg.edit({ content: `💰 **${thief.username}**, **${victim.username}**'den **${result.stolen} coin** çaldı!\n🥷 Toplam çalma: **${result.uses}**${levelMsg}`, components: [] });
-        // msg.edit ping atmaz; sonucu ayrı mesajla hedefe bildir
+        await msg.edit({
+          content: `${victim}`,
+          embeds: [box(`💰 **${thief.username}**, **${victim.username}**'den **${result.stolen} coin** çaldı!\n🥷 Toplam çalma: **${result.uses}**${levelMsg}`)],
+          components: [],
+        });
+        // Düzenleme ping atmaz; sonucu yeni bir mesajla kanalda hedefe bildir
         await interaction.followUp({
-          content: `🚨 ${victim}, **${thief.username}** senden **${result.stolen} coin** çaldı!`,
+          content: `${victim}`,
+          embeds: [box(`🚨 **${thief.username}** senden **${result.stolen} coin** çaldı!`)],
           allowedMentions: { users: [victim.id] },
         }).catch(() => {});
-        victim.send(`💸 **${thief.username}** senden **${result.stolen} coin** çaldı.`).catch(() => {});
       } catch (err) {
-        await msg.edit({ content: `⚠️ Hırsızlık başarısız: ${friendlyError(err)}`, components: [] });
+        await msg.edit({ content: '', embeds: [box(`⚠️ Hırsızlık başarısız: ${friendlyError(err)}`, 0x95A5A6)], components: [] });
       }
     });
   }),
